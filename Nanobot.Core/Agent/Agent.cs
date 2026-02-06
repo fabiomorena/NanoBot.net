@@ -13,6 +13,8 @@ public class Agent
     private readonly IMemory _memory;
     private readonly List<Message> _history = new();
     private const int MaxIterations = 20;
+    private const int MaxHistoryMessages = 10; // Keep last 10 messages
+    private const int MaxToolOutputChars = 15000; // Truncate tool results if too long
 
     public Agent(ILLMProvider provider, ToolRegistry tools, IMemory memory)
     {
@@ -26,8 +28,13 @@ public class Agent
         // 1. Build Context
         var messages = new List<Message>();
         
-        // Add System Prompt with Memory
+        // Add System Prompt with Memory (Truncated if needed)
         var context = _memory.GetContext();
+        if (context.Length > 20000) 
+        {
+            context = context.Substring(0, 20000) + "... (Memory Truncated)";
+        }
+
         var systemPrompt = "You are nanobot, a helpful AI assistant.";
         if (!string.IsNullOrWhiteSpace(context))
         {
@@ -35,8 +42,9 @@ public class Agent
         }
         messages.Add(new Message("system", systemPrompt));
 
-        // Add History
-        messages.AddRange(_history);
+        // Add History (Last N messages)
+        var recentHistory = _history.TakeLast(MaxHistoryMessages).ToList();
+        messages.AddRange(recentHistory);
         
         // Add Current Input
         messages.Add(new Message("user", input));
@@ -74,6 +82,12 @@ public class Agent
             {
                 var result = await _tools.ExecuteAsync(toolCall.Name, toolCall.Arguments);
                 result ??= "Tool execution returned no result.";
+
+                // TRUNCATION: Prevent huge tool outputs from blowing up the context
+                if (result.Length > MaxToolOutputChars)
+                {
+                    result = result.Substring(0, MaxToolOutputChars) + $"\n... (Result truncated from {result.Length} chars)";
+                }
                 
                 // Add Tool Message
                 var toolMsg = new Message("tool", result)
@@ -89,6 +103,12 @@ public class Agent
         if (finalContent != null)
         {
             _history.Add(new Message("assistant", finalContent));
+        }
+
+        // Maintain history size
+        if (_history.Count > MaxHistoryMessages * 2) // *2 because user+assistant
+        {
+            _history.RemoveRange(0, _history.Count - (MaxHistoryMessages * 2));
         }
 
         return finalContent ?? "No response.";

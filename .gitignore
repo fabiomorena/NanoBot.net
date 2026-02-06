@@ -19,3 +19,4 @@ artifacts/
 config.json
 cron.json
 memory/
+pdf/

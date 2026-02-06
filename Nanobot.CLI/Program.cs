@@ -170,6 +170,8 @@ class Program
             var registry = new ToolRegistry();
             registry.Register(new ReadFileTool());
             registry.Register(new WriteFileTool());
+            registry.Register(new EditFileTool());
+            registry.Register(new ListDirTool());
             registry.Register(new ShellTool());
             
             string braveKey = config.WebSearch?.ApiKey ?? Environment.GetEnvironmentVariable("BRAVE_API_KEY") ?? "";
@@ -207,6 +209,107 @@ class Program
             await Task.Delay(-1); // Keep running
         });
         rootCommand.AddCommand(gatewayCommand);
+
+        // Chat Command
+        var chatCommand = new Command("chat", "Start a persistent multi-turn chat session");
+        chatCommand.SetHandler(async () => {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var nanoDir = Path.Combine(home, ".nanobot");
+            var configFile = Path.Combine(nanoDir, "config.json");
+            var workspace = Path.Combine(nanoDir, "workspace");
+
+            if (!File.Exists(configFile)) {
+                Console.WriteLine("Please run 'nanobot onboard' first.");
+                return;
+            }
+
+            var config = ConfigLoader.Load(configFile);
+            
+            // LLM Provider setup
+            string apiKey = "";
+            string? baseUrl = null;
+            string model = "gpt-4o";
+
+            if (config.Providers.TryGetValue("openai", out var openAiConfig)) {
+                apiKey = openAiConfig.ApiKey ?? "";
+                baseUrl = openAiConfig.ApiBase;
+            } else if (config.Providers.TryGetValue("openrouter", out var orConfig)) {
+                apiKey = orConfig.ApiKey ?? "";
+                baseUrl = orConfig.ApiBase ?? "https://openrouter.ai/api/v1";
+            }
+            
+            if (string.IsNullOrEmpty(apiKey)) apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? "";
+            if (string.IsNullOrEmpty(baseUrl)) baseUrl = Environment.GetEnvironmentVariable("OPENAI_API_BASE");
+            if (config.Agents.Defaults.Model != null) model = config.Agents.Defaults.Model;
+            else model = Environment.GetEnvironmentVariable("OPENAI_MODEL") ?? "gpt-4o";
+
+            if (string.IsNullOrEmpty(apiKey)) {
+                Console.WriteLine("Error: No API Key found.");
+                return;
+            }
+
+            var provider = new OpenAIProvider(apiKey, baseUrl, model);
+            var registry = new ToolRegistry();
+            registry.Register(new ReadFileTool());
+            registry.Register(new WriteFileTool());
+            registry.Register(new EditFileTool());
+            registry.Register(new ListDirTool());
+            registry.Register(new ShellTool());
+            registry.Register(new WebSearchTool(config.WebSearch?.ApiKey ?? Environment.GetEnvironmentVariable("BRAVE_API_KEY") ?? ""));
+            registry.Register(new WebFetchTool());
+            registry.Register(new WeatherTool());
+            registry.Register(new SummarizeTool(provider));
+            
+            string? githubToken = config.Providers.TryGetValue("github", out var ghConfig) ? ghConfig.ApiKey : null;
+            githubToken ??= Environment.GetEnvironmentVariable("GITHUB_TOKEN");
+            registry.Register(new GitHubTool(githubToken));
+
+            var memory = new FileMemoryStore(workspace);
+            var agent = new Agent(provider, registry, memory);
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("╔══════════════════════════════════════════════════════╗");
+            Console.WriteLine("║             Nanobot.NET Interactive Chat             ║");
+            Console.WriteLine("║      Type 'exit' to quit, 'clear' to reset hist.     ║");
+            Console.WriteLine("╚══════════════════════════════════════════════════════╝");
+            Console.ResetColor();
+
+            while (true) {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write("\nYou: ");
+                Console.ResetColor();
+                
+                var input = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(input)) continue;
+                if (input.ToLower() == "exit" || input.ToLower() == "quit") break;
+                if (input.ToLower() == "clear") {
+                    // Note: We'd need to expose a Reset method on Agent to clear history
+                    Console.WriteLine("History reset (within this session).");
+                    continue;
+                }
+
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write("Thinking...");
+                Console.ResetColor();
+
+                try {
+                    var response = await agent.RunAsync(input);
+                    
+                    // Clear "Thinking..." line
+                    Console.Write("\r" + new string(' ', 15) + "\r");
+                    
+                    Console.ForegroundColor = ConsoleColor.Magenta;
+                    Console.Write("Agent: ");
+                    Console.ResetColor();
+                    Console.WriteLine(response);
+                } catch (Exception ex) {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"\nError: {ex.Message}");
+                    Console.ResetColor();
+                }
+            }
+        });
+        rootCommand.AddCommand(chatCommand);
 
         // Agent Command
         var messageOption = new Option<string>(
@@ -278,6 +381,8 @@ class Program
             var registry = new ToolRegistry();
             registry.Register(new ReadFileTool());
             registry.Register(new WriteFileTool());
+            registry.Register(new EditFileTool());
+            registry.Register(new ListDirTool());
             registry.Register(new ShellTool());
             
             string braveKey = config.WebSearch?.ApiKey ?? Environment.GetEnvironmentVariable("BRAVE_API_KEY") ?? "";
