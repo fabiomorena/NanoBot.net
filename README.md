@@ -1,30 +1,28 @@
 # nanobot.NET
 
-**nanobot.NET** 是 [nanobot](https://github.com/HKUDS/nanobot) 项目的 .NET 10 复刻版本。它是一个超轻量级的个人 AI 助手，以 DLL 的形式提供核心功能，并附带一个功能齐全的 CLI 工具。
+**nanobot.NET** is a .NET 10 port of the [nanobot](https://github.com/HKUDS/nanobot) project. It's an ultra-lightweight personal AI assistant provided as a DLL with core functionality and a full-featured CLI tool.
 
-## 🚀 特性
+## 🚀 Features
 
-*   **超轻量级**: 保持了原始项目的精简架构。
-*   **多模型支持**: 通过 OpenAI SDK 完美支持 OpenAI、OpenRouter 及其兼容接口。
-*   **强大的工具系统**: 内置文件系统、Shell 执行、Web 搜索 (Brave)、Web 抓取、天气预报等工具。
-*   **记忆系统**: 基于文件的持久化记忆。
-*   **多通道支持**: 支持通过 Telegram 机器人进行交互。
-*   **自动化**: 支持 Cron 定时任务和 Heartbeat 主动唤醒。
+*   **Ultra-lightweight**: Maintains the streamlined architecture of the original project
+*   **Multi-model support**: Perfect support for OpenAI, OpenRouter, and compatible APIs via OpenAI SDK
+*   **Powerful tool system**: Built-in tools for filesystem, shell execution, web search (Brave), web scraping, weather forecasts, and more
+*   **Memory system**: File-based persistent memory
+*   **Multi-channel support**: Interact via Telegram bot
+*   **Automation**: Support for Cron scheduled tasks and Heartbeat proactive wake-up
 
-## 🛠️ 安装与运行
+## 🛠️ Installation & Usage
 
-### 1. 初始化
-
+### 1. Initialize
 ```bash
 dotnet run --project Nanobot.CLI onboard
 ```
 
-这将在 `~/.nanobot` 目录下创建配置文件和工作区。
+This creates configuration files and workspace in the `~/.nanobot` directory.
 
-### 2. 配置
+### 2. Configuration
 
-编辑 `~/.nanobot/config.json`，添加你的 API 密钥：
-
+Edit `~/.nanobot/config.json` and add your API keys:
 ```json
 {
   "providers": {
@@ -38,27 +36,27 @@ dotnet run --project Nanobot.CLI onboard
 }
 ```
 
-### 3. 使用
+### 3. Usage
 
-*   **对话**:
-    ```bash
-    dotnet run --project Nanobot.CLI agent -m "你好"
-    ```
-*   **启动网关 (Telegram)**:
-    ```bash
+*   **Chat**:
+```bash
+    dotnet run --project Nanobot.CLI agent -m "Hello"
+```
+*   **Start Gateway (Telegram)**:
+```bash
     dotnet run --project Nanobot.CLI gateway
-    ```
-*   **管理定时任务**:
-    ```bash
+```
+*   **Manage Scheduled Tasks**:
+```bash
     dotnet run --project Nanobot.CLI cron list
-    ```
+```
 
-## 🏗️ 项目结构
+## 🏗️ Project Structure
 
-*   `Nanobot.Core`: 核心逻辑库，包含 LLM 提供商、工具注册表、记忆系统等。
-*   `Nanobot.CLI`: 命令行界面工具。
-*   `Nanobot.Tests`: 单元测试项目。
+*   `Nanobot.Core`: Core logic library containing LLM providers, tool registry, memory system, etc.
+*   `Nanobot.CLI`: Command-line interface tool
+*   `Nanobot.Tests`: Unit test project
 
-## 📄 许可证
+## 📄 License
 
-本项目采用 MIT 许可证。
+This project is licensed under the MIT License.
